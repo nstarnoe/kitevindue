@@ -41,24 +41,31 @@ async function fetchSpot(spot){
   });
 }
 
+async function fetchWithRetry(spot, results, errors){
+  const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
+  for(let attempt=0; attempt<4; attempt++){
+    try{
+      const steps = await fetchSpot(spot);
+      results[key] = { name: spot.name, lat: spot.lat, lon: spot.lon,
+                       shoreDir: spot.shoreDir, steps };
+      return;
+    }catch(e){
+      if(String(e.message).includes("429") && attempt<3){ await sleep(1500*(attempt+1)); continue; }
+      errors[key] = e.message;
+      return;
+    }
+  }
+}
+
 export default async (req) => {
   const results = {};
   const errors = {};
-  await Promise.all(LIBRARY.map(async (spot) => {
-    const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
-    for(let attempt=0; attempt<2; attempt++){
-      try{
-        const steps = await fetchSpot(spot);
-        results[key] = { name: spot.name, lat: spot.lat, lon: spot.lon,
-                         shoreDir: spot.shoreDir, steps };
-        return;
-      }catch(e){
-        if(String(e.message).includes("429") && attempt===0){ await sleep(2000); continue; }
-        errors[key] = e.message;
-        return;
-      }
-    }
-  }));
+  const BATCH = 2;
+  for(let i=0; i<LIBRARY.length; i+=BATCH){
+    const batch = LIBRARY.slice(i, i+BATCH);
+    await Promise.all(batch.map(spot => fetchWithRetry(spot, results, errors)));
+    if(i+BATCH < LIBRARY.length) await sleep(1200);
+  }
 
   const payload = {
     updated: new Date().toISOString(),
