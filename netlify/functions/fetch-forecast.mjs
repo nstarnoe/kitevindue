@@ -44,23 +44,21 @@ async function fetchSpot(spot){
 export default async (req) => {
   const results = {};
   const errors = {};
-  for(const spot of LIBRARY){
+  await Promise.all(LIBRARY.map(async (spot) => {
     const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
-    let ok = false;
-    for(let attempt=0; attempt<3 && !ok; attempt++){
+    for(let attempt=0; attempt<2; attempt++){
       try{
         const steps = await fetchSpot(spot);
         results[key] = { name: spot.name, lat: spot.lat, lon: spot.lon,
                          shoreDir: spot.shoreDir, steps };
-        ok = true;
+        return;
       }catch(e){
-        if(String(e.message).includes("429")){ await sleep(3000*(attempt+1)); }
-        else { errors[key] = e.message; break; }
+        if(String(e.message).includes("429") && attempt===0){ await sleep(2000); continue; }
+        errors[key] = e.message;
+        return;
       }
     }
-    if(!ok && !errors[key]) errors[key] = "gav op efter forsøg";
-    await sleep(1200);
-  }
+  }));
 
   const payload = {
     updated: new Date().toISOString(),
