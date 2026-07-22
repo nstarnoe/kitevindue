@@ -1,8 +1,7 @@
 import { getStore } from "@netlify/blobs";
 
-const DMI_BASE = "https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position";
-const PARAMS = ["wind-speed-10m","wind-dir-10m","gust-wind-speed-10m","total-precipitation","precipitation-type"];
-const HOURS_AHEAD = 84;
+const OM_BASE = "https://api.open-meteo.com/v1/forecast";
+const FORECAST_DAYS = 3;
 
 const LIBRARY = [
   { name:"Gilleleje Havn", lon:12.3111, lat:56.1274, shoreDir:180 },
@@ -15,59 +14,63 @@ const LIBRARY = [
   { name:"Dalby Huse",     lon:11.9330, lat:55.8890, shoreDir:270 },
 ];
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function fetchSpot(spot){
-  const now = new Date(), end = new Date(now.getTime() + HOURS_AHEAD*3600*1000);
-  const dt = now.toISOString().split('.')[0]+"Z/"+end.toISOString().split('.')[0]+"Z";
-  const url = `${DMI_BASE}?coords=POINT(${spot.lon} ${spot.lat})&parameter-name=${PARAMS.join(',')}`
-            + `&crs=crs84&f=GeoJSON&datetime=${encodeURIComponent(dt)}`;
-  const r = await fetch(url);
-  if(!r.ok) throw new Error("HTTP "+r.status);
-  const data = await r.json();
-  let prev = null;
-  return (data.features||[]).map(f => {
-    const p = f.properties, acc = p["total-precipitation"];
-    let rain = null;
-    if(acc != null){ rain = prev==null ? 0 : Math.max(acc-prev, 0); prev = acc; }
-    return {
-      t: p.step, wind: p["wind-speed-10m"], gust: p["gust-wind-speed-10m"],
-      dir: p["wind-dir-10m"], rain, ptype: p["precipitation-type"],
-    };
-  });
+function toSteps(hourly){
+  const out = [];
+  const t = hourly.time || [];
+  for(let i=0; i<t.length; i++){
+    out.push({
+      t: t[i].length===16 ? t[i]+":00Z" : t[i],
+      wind: hourly.wind_speed_10m ? hourly.wind_speed_10m[i] : null,
+      gust: hourly.wind_gusts_10m ? hourly.wind_gusts_10m[i] : null,
+      dir:  hourly.wind_direction_10m ? hourly.wind_direction_10m[i] : null,
+      rain: hourly.precipitation ? hourly.precipitation[i] : null,
+      ptype: null,
+    });
+  }
+  return out;
 }
 
 export default async (req) => {
-  const store = getStore("forecast");
-  let existing = {};
-  try{ const prev = await store.get("latest", { type:"json" }); if(prev && prev.spots) existing = prev.spots; }catch(e){}
+  const lats = LIBRARY.map(s => s.lat).join(",");
+  const lons = LIBRARY.map(s => s.lon).join(",");
+  const url = `${OM_BASE}?latitude=${lats}&longitude=${lons}`
+            + `&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation`
+            + `&models=dmi_harmonie_arome_europe`
+            + `&wind_speed_unit=ms`
+            + `&timeformat=iso8601&timezone=UTC`
+            + `&forecast_days=${FORECAST_DAYS}`;
 
-  const results = { ...existing };
+  const results = {};
   const errors = {};
-  for(const spot of LIBRARY){
-    const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
-    let ok = false;
-    for(let attempt=0; attempt<6 && !ok; attempt++){
-      try{
-        const steps = await fetchSpot(spot);
+  try{
+    const r = await fetch(url);
+    if(!r.ok) throw new Error("Open-Meteo HTTP "+r.status);
+    let data = await r.json();
+    if(!Array.isArray(data)) data = [data];
+    data.forEach((loc, idx) => {
+      const spot = LIBRARY[idx];
+      if(!spot) return;
+      const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
+      if(loc.hourly && loc.hourly.time){
         results[key] = { name: spot.name, lat: spot.lat, lon: spot.lon,
-                         shoreDir: spot.shoreDir, steps };
-        delete errors[key];
-        ok = true;
-      }catch(e){
-        if(String(e.message).includes("429")){ await sleep(5000*(attempt+1)); }
-        else { errors[key] = e.message; break; }
+                         shoreDir: spot.shoreDir, steps: toSteps(loc.hourly) };
+      }else{
+        errors[key] = "ingen hourly-data";
       }
-    }
-    if(!ok && !errors[key]) errors[key] = "429 efter flere forsøg";
-    await store.setJSON("latest", {
-      updated: new Date().toISOString(),
-      count: Object.keys(results).length,
-      errors, spots: results,
     });
-    await sleep(4000);
+  }catch(e){
+    errors["_all"] = e.message;
   }
 
+  const payload = {
+    updated: new Date().toISOString(),
+    count: Object.keys(results).length,
+    errors,
+    spots: results,
+  };
+
+  const store = getStore("forecast");
+  await store.setJSON("latest", payload);
   return new Response("ok");
 };
 
