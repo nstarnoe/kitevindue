@@ -1,0 +1,15 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Pæn URL til appen: /api/forecast -> forecast-funktionen
+[[redirects]]
+  from = "/api/forecast"
+  to = "/.netlify/functions/forecast"
+  status = 200
+
+# Manuel trigger til at teste henteren: /api/refresh
+[[redirects]]
+  from = "/api/refresh"
+  to = "/.netlify/functions/fetch-forecast"
+  status = 200
