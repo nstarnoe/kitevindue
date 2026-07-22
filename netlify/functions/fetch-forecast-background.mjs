@@ -12,6 +12,7 @@ const LIBRARY = [
   { name:"Køge Sydstrand", lon:12.1917, lat:55.4477, shoreDir:270 },
   { name:"Dalby Huse",     lon:11.9366, lat:55.8217, shoreDir:270 },
   { name:"Sanddopperne",   lon:11.3781, lat:55.7760, shoreDir:270 },
+  { name:"Amager Strandpark", lon:12.6441, lat:55.6504, shoreDir:270 },
 ];
 
 function toSteps(hourly){
