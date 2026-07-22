@@ -38,35 +38,36 @@ async function fetchSpot(spot){
 }
 
 export default async (req) => {
-  const results = {};
+  const store = getStore("forecast");
+  let existing = {};
+  try{ const prev = await store.get("latest", { type:"json" }); if(prev && prev.spots) existing = prev.spots; }catch(e){}
+
+  const results = { ...existing };
   const errors = {};
   for(const spot of LIBRARY){
     const key = spot.lat.toFixed(4)+","+spot.lon.toFixed(4);
     let ok = false;
-    for(let attempt=0; attempt<4 && !ok; attempt++){
+    for(let attempt=0; attempt<6 && !ok; attempt++){
       try{
         const steps = await fetchSpot(spot);
         results[key] = { name: spot.name, lat: spot.lat, lon: spot.lon,
                          shoreDir: spot.shoreDir, steps };
+        delete errors[key];
         ok = true;
       }catch(e){
-        if(String(e.message).includes("429")){ await sleep(2000*(attempt+1)); }
+        if(String(e.message).includes("429")){ await sleep(5000*(attempt+1)); }
         else { errors[key] = e.message; break; }
       }
     }
     if(!ok && !errors[key]) errors[key] = "429 efter flere forsøg";
-    await sleep(1500);
+    await store.setJSON("latest", {
+      updated: new Date().toISOString(),
+      count: Object.keys(results).length,
+      errors, spots: results,
+    });
+    await sleep(4000);
   }
 
-  const payload = {
-    updated: new Date().toISOString(),
-    count: Object.keys(results).length,
-    errors,
-    spots: results,
-  };
-
-  const store = getStore("forecast");
-  await store.setJSON("latest", payload);
   return new Response("ok");
 };
 
