@@ -1,6 +1,7 @@
 # Kitevindue
 
-Kitesurf-prognose for Sjælland. Data: DMI HARMONIE AROME (via Open-Meteo).
+Kitesurf-prognose for Sjælland. Data: DMI HARMONIE DINI, hentet direkte fra
+DMI's Open Data API (`opendataapi.dmi.dk`) — ingen mellemled, ingen API-nøgle.
 
 Alt kører gratis på GitHub — ingen server, ingen credits der løber tør.
 

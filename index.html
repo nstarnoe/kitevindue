@@ -162,14 +162,19 @@
   .best.none{background:rgba(159,192,212,.12);color:var(--fog);border-color:var(--line)}
   .grid{display:flex;gap:3px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
   .grid::-webkit-scrollbar{height:0}
-  .cell{flex:0 0 50px;border-radius:9px;padding:7px 3px 6px;text-align:center;
+  .cell{flex:0 0 50px;border-radius:9px;padding:8px 3px 6px;text-align:center;
     background:rgba(0,0,0,.18);border:1px solid var(--line);position:relative;scroll-snap-align:start}
+  .cell::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    border-radius:8px 8px 0 0;background:rgba(159,192,212,.28)}
+  .cell.day-b::before{background:rgba(46,230,166,.35)}
   .cell.now{outline:2px solid var(--chalk);outline-offset:1px}
-  .cell .hr{font-family:var(--mono);font-size:10px;color:var(--fog)}
+  .cell .hr{font-family:var(--mono);font-size:10px;color:var(--fog);margin-top:2px}
   .cell .day{font-family:var(--mono);font-size:9px;color:var(--fog);opacity:.9;min-height:11px;font-weight:700}
-  .cell.day-start{margin-left:10px;border-left:2px solid rgba(159,192,212,.55)}
-  .cell.day-start:first-child{margin-left:0}
-  .cell .day.full{color:var(--chalk);font-size:9px;white-space:nowrap}
+  .cell.day-start{margin-left:14px;border-left:2px solid var(--pin)}
+  .cell.day-start:first-child{margin-left:0;border-left:1px solid var(--line)}
+  .cell .day.full{color:#07202a;background:var(--pin);font-size:8.5px;font-weight:800;
+    letter-spacing:.2px;white-space:nowrap;padding:2px 5px;border-radius:5px;display:inline-block;
+    margin-bottom:2px}
   .cell .arr{font-size:16px;line-height:1;margin:5px 0 3px;display:inline-block}
   .cell .spd{font-family:var(--mono);font-size:15px;font-weight:800;line-height:1}
   .cell .gust{font-family:var(--mono);font-size:9px;color:var(--fog);margin-top:2px}
@@ -355,8 +360,6 @@ function loadPrefs(){
 function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({lo:SWEET_LO,hi:SWEET_HI}));}catch(e){}}
 const DAY_START=6, DAY_END=21;   // vis kun timer i dette interval (lokal tid)
 const isDaytime=iso=>{const h=new Date(iso).getHours();return h>=DAY_START&&h<=DAY_END;};
-const BASE="https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position";
-const P=["wind-speed-10m","wind-dir-10m","gust-wind-speed-10m","total-precipitation","precipitation-type"];
 const DIRS=["N","NNØ","NØ","ØNØ","Ø","ØSØ","SØ","SSØ","S","SSV","SV","VSV","V","VNV","NV","NNV"];
 const DAYS_SHORT=["søn","man","tir","ons","tor","fre","lør"];
 const toCompass=d=>d==null?"–":DIRS[Math.round(d/22.5)%16];
@@ -552,20 +555,21 @@ function renderSpot(i,spot,steps){
   const win=bestWindow(steps,spot.shoreDir);
   const best=win?`<span class="best">Næste vindue · ${win.a.day} ${win.a.hr}–${win.b.hr} · ${Math.round(win.span)}t</span>`
                 :`<span class="best none">Intet kitevindue i forecastperioden</span>`;
-  const nowDate=new Date().toDateString();let lastDay=null,firstToday=true;
+  const nowDate=new Date().toDateString();let lastDay=null,firstToday=true,dayIdx=-1;
   // Vis ALLE tilgængelige dagtimer i forecastet – ikke kun de første 36 timer.
-  // Hvis fetch-forecast.mjs fx henter 7 dage, vises alle 7 dage her.
   const cells=steps.filter(s=>isDaytime(s.t)).map(s=>{
     const cls=rate(s,spot.shoreDir),{hr,day,date}=fmtHour(s.t);
     const d=new Date(s.t);
     const showDay=date!==lastDay;lastDay=date;
+    if(showDay)dayIdx++;
+    const dayParity=dayIdx%2===0?'day-a':'day-b';
     const dayLabel=showDay
       ? `${day.toUpperCase()} ${d.toLocaleDateString('da-DK',{day:'numeric',month:'numeric'})}`
       : '&nbsp;';
     const o=isOffshore(s.dir,spot.shoreDir);
     const isNow=date===nowDate&&firstToday;if(isNow)firstToday=false;
     const dirVal=s.dir==null?'null':s.dir;
-    return `<div class="cell ${cls} ${isNow?'now':''} ${showDay?'day-start':''}" onclick="pickHour(${i},${dirVal},'${cls}')">
+    return `<div class="cell ${cls} ${dayParity} ${isNow?'now':''} ${showDay?'day-start':''}" onclick="pickHour(${i},${dirVal},'${cls}')">
       ${(s.rain!=null&&s.rain>=0.1)?'<span class="rain">💧</span>':''}
       ${o?'<span class="off">⚠︎</span>':''}
       <div class="hr">${hr}</div><div class="day ${showDay?'full':''}">${dayLabel}</div>
