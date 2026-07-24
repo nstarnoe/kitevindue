@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kitevindue">
+<meta name="theme-color" content="#16384d">
+<title>Kitevindue</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{
+    --bg:#16384d;--bg2:#1c455d;--row:#23506b;--row2:#1a4258;--line:#2e5f7c;
+    --fog:#9fc0d4;--chalk:#f2f8fb;--go:#34d399;--pin:#2ee6a6;--over:#f0b840;--danger:#f0654f;
+    --mono:"SF Mono",ui-monospace,"Roboto Mono",Menlo,monospace;
+    --w0:#3d6f99;--w1:#3f8fb0;--w2:#46b08a;--w3:#7cc855;--w4:#c6d23f;--w5:#f0b840;--w6:#f0654f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--chalk);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior-y:contain}
+  body{padding-bottom:calc(env(safe-area-inset-bottom) + 20px)}
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding:max(env(safe-area-inset-top),12px) 16px 12px}
+  .brand{display:flex;align-items:baseline;gap:9px}
+  .brand h1{font-size:21px;font-weight:800;letter-spacing:-.4px}
+  .brand .tag{display:none}
+  .range-btn{display:flex;align-items:center;justify-content:space-between;
+    width:calc(100% - 24px);margin:2px 12px 0;background:var(--bg2);
+    border:1px solid var(--line);border-radius:12px;padding:12px 16px;cursor:pointer;
+    font-family:inherit}
+  .range-btn:active{background:var(--row)}
+  .range-btn-label{font-family:var(--mono);font-size:13px;color:var(--chalk);letter-spacing:.5px}
+  .range-btn-val{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--go)}
+  .settings{max-height:0;overflow:hidden;transition:max-height .25s ease;
+    background:var(--panel);border-bottom:1px solid var(--line)}
+  .settings.open{max-height:240px;border-top:1px solid var(--line)}
+  .settings-row{display:flex;align-items:center;gap:10px;padding:12px 16px 4px}
+  .settings-row label{font-family:var(--mono);font-size:12px;color:var(--fog);flex:0 0 120px}
+  .settings-row label b{color:var(--go);font-weight:700}
+  .settings-row input[type=range]{flex:1;accent-color:var(--pin);min-width:80px}
+  .num-in{width:56px;background:var(--bg2);border:1px solid var(--line);color:var(--chalk);
+    font-family:var(--mono);font-size:15px;text-align:center;padding:8px 4px;border-radius:9px;
+    flex:0 0 auto}
+  .num-in:focus{outline:none;border-color:var(--pin)}
+  .settings-row .unit{font-family:var(--mono);font-size:11px;color:var(--fog);flex:0 0 auto}
+  .settings-hint{font-family:var(--mono);font-size:10px;color:var(--fog);padding:6px 16px 14px}
+  .updated{font-family:var(--mono);font-size:10px;color:var(--fog);text-align:right;line-height:1.4}
+  .updated b{color:var(--pin)}
+  #map{height:32vh;min-height:200px;width:100%;background:#12303f;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);z-index:2;
+    position:sticky;top:0}
+  .leaflet-container{background:#12303f}
+  .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .pin.go{background:var(--go)}.pin.over{background:var(--over)}
+  .pin.danger{background:var(--danger)}.pin.nogo{background:var(--fog)}
+  .pin-arrow{width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+    font-size:20px;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.7);
+    filter:drop-shadow(0 0 1px rgba(0,0,0,.9))}
+  .pin-arrow.go{color:var(--go)}.pin-arrow.over{color:var(--over)}
+  .pin-arrow.danger{color:var(--danger)}.pin-arrow.nogo{color:var(--fog)}
+  .section-title{font-size:22px;font-weight:800;letter-spacing:-.4px;padding:18px 16px 4px;
+    display:flex;align-items:center;justify-content:space-between}
+  .lib-btn{background:var(--bg2);border:1px solid var(--line);color:var(--chalk);
+    font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:10px;cursor:pointer}
+  .lib-btn:active{background:var(--row)}
+  .library{max-height:0;overflow:hidden;transition:max-height .28s ease;
+    background:var(--panel);margin:0 12px;border-radius:0 0 14px 14px}
+  .library.open{max-height:340px;overflow-y:auto;border:1px solid var(--line)}
+  .library-head{font-family:var(--mono);font-size:11px;color:var(--fog);padding:12px 14px 6px}
+  .lib-list{padding:0 8px 10px}
+  .lib-item{display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--line)}
+  .lib-item:last-child{border-bottom:none}
+  .lib-item .name{flex:1;font-size:15px}
+  .lib-item .coord{font-family:var(--mono);font-size:10px;color:var(--fog)}
+  .lib-check{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);
+    background:var(--bg2);color:var(--go);font-size:15px;cursor:pointer;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;padding:0}
+  .lib-check.on{background:var(--go);color:#07202a;border-color:var(--go)}
+  .addbar{display:flex;gap:8px;padding:6px 12px 4px}
+  .addbar input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);
+    color:var(--chalk);font-size:15px;padding:11px 14px;border-radius:11px;font-family:inherit}
+  .addbar input::placeholder{color:var(--fog)}
+  .addbar input:focus{outline:none;border-color:var(--pin)}
+  .addbar button{flex:0 0 auto;background:var(--pin);border:none;color:#07202a;font-weight:700;
+    font-size:14px;padding:0 18px;border-radius:11px;cursor:pointer;font-family:inherit}
+  .addbar button:active{opacity:.8}
+  .addbar button:disabled{opacity:.5;cursor:default}
+  .search-msg{font-family:var(--mono);font-size:11px;padding:2px 16px;min-height:14px;color:var(--fog)}
+  .search-msg.err{color:var(--danger)}
+  .search-msg.ok{color:var(--go)}
+  .spot{margin:8px 12px 0;background:var(--row);border-radius:14px;overflow:hidden;scroll-margin-top:34vh}
+  .spot:nth-child(even){background:var(--row2)}
+  .spot-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 6px;cursor:pointer}
+  .reorder{flex:0 0 auto;display:flex;flex-direction:column;gap:1px;align-self:center}
+  .reorder button{background:var(--bg2);border:1px solid var(--line);color:var(--fog);
+    width:30px;height:20px;border-radius:6px;font-size:12px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;padding:0;touch-action:manipulation}
+  .reorder button:active{background:var(--row);color:var(--chalk)}
+  .reorder button:disabled{opacity:.25;cursor:default}
+  .del-x{flex:0 0 auto;align-self:center;background:transparent;border:1px solid var(--line);
+    color:var(--danger);width:26px;height:26px;border-radius:7px;font-size:15px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+    margin-left:2px;touch-action:manipulation}
+  .del-x:active{background:rgba(240,101,79,.18)}
+  .info-x{flex:0 0 auto;align-self:center;background:transparent;border:1px solid var(--line);
+    color:var(--pin);width:26px;height:26px;border-radius:7px;font-size:14px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
+    margin-left:2px;touch-action:manipulation}
+  .info-x:active{background:rgba(46,230,166,.15)}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(4,12,20,.72);z-index:1000;
+    display:none;align-items:flex-end;justify-content:center;padding:0}
+  .modal-backdrop.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;
+    width:100%;max-width:640px;max-height:80vh;overflow-y:auto;
+    padding:0 0 calc(env(safe-area-inset-bottom) + 16px)}
+  @media(min-width:560px){.modal-backdrop{align-items:center}.modal{border-radius:18px;margin:16px}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;
+    padding:18px 18px 8px;position:sticky;top:0;background:var(--panel)}
+  .modal-head h3{font-size:20px;font-weight:800;letter-spacing:-.3px}
+  .modal-x{background:var(--bg2);border:1px solid var(--line);color:var(--chalk);
+    width:32px;height:32px;border-radius:9px;font-size:15px;cursor:pointer}
+  .modal-body{padding:4px 18px 8px}
+  .info-block{margin:14px 0}
+  .info-block .lbl{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--pin);margin-bottom:5px}
+  .info-block .txt{font-size:15px;line-height:1.5;color:var(--chalk)}
+  .info-block .txt.empty{color:var(--fog);font-style:italic}
+  .lvl-badge{display:inline-block;font-family:var(--mono);font-size:12px;padding:3px 10px;
+    border-radius:7px;background:var(--bg2);border:1px solid var(--line)}
+  .modal-edit{margin:8px 18px 0;background:transparent;border:1px solid var(--line);
+    color:var(--fog);font-family:var(--mono);font-size:12px;padding:10px 16px;
+    border-radius:9px;cursor:pointer;width:calc(100% - 36px)}
+  .modal-edit:active{background:var(--bg2)}
+  .spot-loc{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
+  .spot-loc .mk{color:var(--pin);font-size:15px;flex:0 0 auto}
+  .spot-loc h2{font-size:19px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spot-now{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto}
+  .spot-now .wx{display:flex;align-items:center;gap:9px}
+  .spot-now .ico{font-size:18px}
+  .spot-now .dirbadge{width:30px;height:30px;border-radius:50%;border:2px solid var(--go);
+    display:flex;align-items:center;justify-content:center}
+  .spot-now .dirbadge.off{border-color:var(--danger)}
+  .spot-now .arr{font-size:15px;line-height:1;color:var(--chalk)}
+  .spot-now .vals{font-family:var(--mono);font-size:13px;color:var(--chalk);margin-top:1px}
+  .spot-now .vals b{font-weight:700}
+  .chev{color:var(--fog);font-size:13px;transition:transform .2s;align-self:center}
+  .spot.open .chev{transform:rotate(90deg)}
+  .week{padding:2px 16px 14px}
+  .bar{display:flex;height:14px;border-radius:4px;overflow:hidden}
+  .bar i{flex:1 1 0;display:block}
+  .days{display:flex;margin-top:5px}
+  .days span{font-family:var(--mono);font-size:10px;color:var(--fog);text-align:center;letter-spacing:.5px}
+  .days span.rain::before{content:"💧"}
+  .detail{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .spot.open .detail{max-height:440px}
+  .detail-inner{padding:2px 12px 14px}
+  .best{display:inline-block;font-family:var(--mono);font-size:11px;padding:4px 10px;
+    border-radius:7px;margin:0 4px 8px;
+    background:rgba(52,211,153,.15);color:var(--go);border:1px solid rgba(52,211,153,.35)}
+  .best.none{background:rgba(159,192,212,.12);color:var(--fog);border-color:var(--line)}
+  .grid{display:flex;gap:3px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .grid::-webkit-scrollbar{height:0}
+  .cell{flex:0 0 50px;border-radius:9px;padding:7px 3px 6px;text-align:center;
+    background:rgba(0,0,0,.18);border:1px solid var(--line);position:relative;scroll-snap-align:start}
+  .cell.now{outline:2px solid var(--chalk);outline-offset:1px}
+  .cell .hr{font-family:var(--mono);font-size:10px;color:var(--fog)}
+  .cell .day{font-family:var(--mono);font-size:8px;color:var(--fog);opacity:.7;min-height:9px}
+  .cell .arr{font-size:16px;line-height:1;margin:5px 0 3px;display:inline-block}
+  .cell .spd{font-family:var(--mono);font-size:15px;font-weight:800;line-height:1}
+  .cell .gust{font-family:var(--mono);font-size:9px;color:var(--fog);margin-top:2px}
+  .cell .rain{position:absolute;top:4px;right:4px;font-size:9px}
+  .cell .off{position:absolute;top:4px;left:4px;font-size:9px;color:var(--danger)}
+  .c-go{background:linear-gradient(180deg,rgba(52,211,153,.25),rgba(52,211,153,.08));border-color:rgba(52,211,153,.5)}
+  .c-go .spd{color:var(--go)}
+  .c-light{background:rgba(124,200,85,.12);border-color:rgba(124,200,85,.3)}
+  .c-light .spd{color:#9bd96a}
+  .c-over{background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.32)}
+  .c-over .spd{color:var(--over)}
+  .c-danger{background:rgba(240,101,79,.16);border-color:rgba(240,101,79,.4)}
+  .c-danger .spd{color:var(--danger)}
+  .c-nogo .spd{color:var(--fog)}.c-nogo .arr{opacity:.4}
+  .detail-meta{font-family:var(--mono);font-size:10px;color:var(--fog);padding:4px 4px 0}
+  .del-btn{margin:10px 4px 2px;background:transparent;border:1px solid var(--danger);
+    color:var(--danger);font-family:var(--mono);font-size:11px;padding:8px 14px;
+    border-radius:9px;cursor:pointer}
+  .del-btn:active{background:rgba(240,101,79,.15)}
+  .err-msg{font-family:var(--mono);font-size:12px;color:var(--danger);padding:8px 16px}
+  .skel{height:14px;margin:8px 16px 16px;border-radius:4px;background:var(--line)}
+  .pulse{animation:p 1.3s ease-in-out infinite}@keyframes p{0%,100%{opacity:.4}50%{opacity:.85}}
+  .dmi-status{margin:10px 12px 0;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+  .dmi-row{display:flex;align-items:center;justify-content:space-between}
+  .dmi-lbl{font-family:var(--mono);font-size:11px;color:var(--fog);letter-spacing:.5px}
+  .dmi-val{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--chalk)}
+  .dmi-val.soon{color:var(--go)}
+  .legend{display:flex;flex-wrap:wrap;gap:5px 14px;padding:14px 16px 2px;font-family:var(--mono);font-size:10px;color:var(--fog)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .swatch{width:34px;height:9px;border-radius:2px;display:inline-block;
+    background:linear-gradient(90deg,var(--w0),var(--w2),var(--w4),var(--w6))}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .refresh{margin:18px auto 0;display:block;background:var(--bg2);border:1px solid var(--line);
+    color:var(--chalk);font-family:var(--mono);font-size:12px;letter-spacing:1px;
+    text-transform:uppercase;padding:12px 26px;border-radius:12px;cursor:pointer}
+  .refresh:active{background:var(--row)}
+  footer{margin-top:16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--fog);line-height:1.7;padding:0 16px}
+  @media(prefers-reduced-motion:reduce){.pulse{animation:none}.detail,.chev{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Kitevindue</h1></div>
+  <div class="updated" id="updated">henter…</div>
+</header>
+<button class="range-btn" id="rangeTag" onclick="toggleSettings()">
+  <span class="range-btn-label">⚙ Mit vindinterval</span>
+  <span class="range-btn-val" id="rangeVal">8–15 m/s</span>
+</button>
+<div id="settings" class="settings">
+  <div class="settings-row">
+    <label>Kitevindue min</label>
+    <input type="number" id="loNum" min="1" max="30" step="1" value="8" class="num-in">
+    <span class="unit">m/s</span>
+    <input type="range" id="loRange" min="3" max="18" step="1" value="8">
+  </div>
+  <div class="settings-row">
+    <label>Kitevindue max</label>
+    <input type="number" id="hiNum" min="2" max="35" step="1" value="15" class="num-in">
+    <span class="unit">m/s</span>
+    <input type="range" id="hiRange" min="5" max="25" step="1" value="15">
+  </div>
+  <div class="settings-hint">Grøn = vind i dit interval og ikke off-shore. Gemmes på denne enhed.</div>
+</div>
+<div id="map"></div>
+<div id="dmiStatus" class="dmi-status">
+  <div class="dmi-row"><span class="dmi-lbl">Seneste DMI-data</span><span class="dmi-val" id="dmiLatest">—</span></div>
+  <div class="dmi-row"><span class="dmi-lbl">Næste opdatering</span><span class="dmi-val" id="dmiNext">—</span></div>
+</div>
+<div class="legend">
+  <span><i class="swatch"></i>vind lav → høj</span>
+  <span><i class="dot" style="background:var(--go)"></i>kitevindue (dit interval)</span>
+  <span><i class="dot" style="background:var(--danger)"></i>off-shore / for meget</span>
+  <span>💧 nedbør · ⚠︎ off-shore · kun dagtimer</span>
+  <span style="color:var(--pin)">➕ tryk på kortet for at tilføje spot</span>
+</div>
+<div class="section-title">Mine spots
+  <button id="libBtn" class="lib-btn">📚 Bibliotek</button>
+</div>
+<div id="library" class="library">
+  <div class="library-head">Fælles bibliotek — vælg de spots du vil følge</div>
+  <div id="libList" class="lib-list"></div>
+</div>
+<div class="addbar">
+  <input id="searchInput" type="text" placeholder="Søg adresse, sted eller Plus Code…"
+    autocomplete="off" autocapitalize="off" spellcheck="false"/>
+  <button id="searchBtn">Tilføj</button>
+</div>
+<div id="searchMsg" class="search-msg"></div>
+<div id="list"></div>
+
+<div id="infoModal" class="modal-backdrop" onclick="closeInfo(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="infoTitle">Spot</h3>
+      <button class="modal-x" onclick="closeInfo()" aria-label="Luk">✕</button>
+    </div>
+    <div id="infoBody" class="modal-body"></div>
+    <button class="modal-edit" id="infoEdit">Rediger info</button>
+  </div>
+</div>
+<button class="refresh" id="refresh">Opdatér</button>
+<footer>
+  Kilde: DMI — efterfølgende bearbejdet · vind i 10 m højde, prognose ikke måling<br>
+  Off-shore-markering er vejledende — tjek altid lokale forhold og din egen sikkerhed
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ============================================================
+//  DINE SPOTS — ret navne/koordinater frit.
+//  shoreDir = retning vinden BLÆSER FRA når off-shore (ud mod havet). null = ingen advarsel.
+// ============================================================
+// ============================================================
+//  FÆLLES SYNK — JSONBin.io (se opsætningsguide sidst i filen)
+//  Indsæt dine to værdier her. Lad dem stå tomme for at køre lokalt uden synk.
+// ============================================================
+// Det fælles bibliotek ligger i repo'et som data/spots.json.
+// Forecast hentes af en GitHub Action og ligger i data/forecast.json.
+
+// Standard-bibliotek — bruges lokalt og som første seed til det fælles bin.
+const DEFAULT_LIBRARY = [
+  { name:"Gilleleje Havn", lon:12.3111, lat:56.1274, shoreDir:180,
+    info:{
+      desc:"Kystspot på Sjællands nordkyst øst for havnen. Åbent vand mod Kattegat, plads til at boarde langs stranden.",
+      parking:"Parkering ved havnen og strandområdet. Kan være fyldt i sommerweekender.",
+      level:"Øvet — åbent vand og sten flere steder, ikke ideelt for helt nye.",
+      notes:"Off-shore i sydlig vind (blæser væk fra kysten). Sten og badegæster om sommeren. Tjek badeforbud/zoner." } },
+  { name:"Sølager", lon:11.8994, lat:55.9466, shoreDir:90,
+    info:{
+      desc:"Ved Isefjordens munding nær Kulhuse. Lavvandet og relativt fladt vand ved pålandsvind.",
+      parking:"P-plads ved stranden/campingpladsen. Kort gåafstand til vandet.",
+      level:"Begynder til øvet ved de rigtige vindretninger.",
+      notes:"Off-shore i østlig vind. Færgeleje og badende i nærheden — hold afstand." } },
+  { name:"Nivå", lon:12.5272, lat:55.9385, shoreDir:270,
+    info:{
+      desc:"Øresundskyst ved Nivå Strandpark/Bugt. Bred sandstrand, god plads til rigning.",
+      parking:"P ved Nivå Strandpark. Nem adgang til vandet.",
+      level:"Begynder til øvet.",
+      notes:"Off-shore i vestlig vind. Fugle-/naturreservat i bugten — respektér afmærkede zoner. Badegæster om sommeren." } },
+  { name:"Hornbæk", lon:12.4469, lat:56.0931, shoreDir:180,
+    info:{
+      desc:"Populær nordkyststrand med åbent vand mod Kattegat.",
+      parking:"P ved stranden og i byen. Fyldt i højsæsonen.",
+      level:"Øvet — bølger og badegæster om sommeren.",
+      notes:"Off-shore i sydlig vind. Mange badende i sæsonen; vær opmærksom på zoner." } },
+  { name:"Lynæs", lon:11.8626, lat:55.9441, shoreDir:90,
+    info:{
+      desc:"Sjællands mest kendte begynderspot ved Isefjordens munding. Lavvandet og fladt.",
+      parking:"P ved surfcenter/havn. God faciliteter og skole i nærheden.",
+      level:"Begynder — lavvandet og fladt, ideelt til at lære.",
+      notes:"Off-shore i østlig vind. Travlt til vands i gode forhold — hold god afstand." } },
+  { name:"Amager Strandpark", lon:12.6441, lat:55.6504, shoreDir:270,
+    info:{
+      desc:"Bynær Øresundskyst med lagune og åbent vand. Nem adgang efter arbejde.",
+      parking:"P langs strandparken + metro tæt på. God tilgængelighed.",
+      level:"Begynder (lagunen) til øvet (åbent vand).",
+      notes:"Off-shore i vestlig vind på åben side. Mange badende og svømmere om sommeren — brug kitezoner." } },
+  { name:"Køge Sydstrand", lon:12.1917, lat:55.4477, shoreDir:270,
+    info:{
+      desc:"Stor, flad sandstrand syd for Køge med god plads i Køge Bugt.",
+      parking:"P ved stranden. Masser af plads til rigning.",
+      level:"Begynder til øvet.",
+      notes:"Off-shore i vestlig vind. Lavvandet langt ud; badegæster i sæsonen." } },
+];
+
+// LIBRARY = fælles katalog (synkes). SPOTS = de spots brugeren har valgt (vises).
+let LIBRARY = DEFAULT_LIBRARY.slice();
+let SPOTS = [];  // brugerens valgte favoritter — fyldes ved opstart
+
+// unik nøgle pr. spot (til at matche favoritter mod bibliotek)
+function keyOf(s){return s.lat.toFixed(4)+","+s.lon.toFixed(4);}
+
+// Sweet-spot grænser — kan justeres af brugeren og gemmes pr. enhed
+let SWEET_LO=8, SWEET_HI=15;
+const OVER_HI=20, OFFSHORE_TOL=45;
+const PREF_KEY="kitevindue_prefs_v1";
+function loadPrefs(){
+  try{const p=JSON.parse(localStorage.getItem(PREF_KEY));
+    if(p){if(typeof p.lo==="number")SWEET_LO=p.lo;if(typeof p.hi==="number")SWEET_HI=p.hi;}}catch(e){}
+}
+function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({lo:SWEET_LO,hi:SWEET_HI}));}catch(e){}}
+const DAY_START=6, DAY_END=21;   // vis kun timer i dette interval (lokal tid)
+const HOURS=36, WEEK_HOURS=144;
+const isDaytime=iso=>{const h=new Date(iso).getHours();return h>=DAY_START&&h<=DAY_END;};
+const BASE="https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position";
+const P=["wind-speed-10m","wind-dir-10m","gust-wind-speed-10m","total-precipitation","precipitation-type"];
+const DIRS=["N","NNØ","NØ","ØNØ","Ø","ØSØ","SØ","SSØ","S","SSV","SV","VSV","V","VNV","NV","NNV"];
+const DAYS_SHORT=["søn","man","tir","ons","tor","fre","lør"];
+const toCompass=d=>d==null?"–":DIRS[Math.round(d/22.5)%16];
+function angDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
+function isOffshore(dir,sd){if(dir==null||sd==null)return false;return angDiff(dir,sd)<=OFFSHORE_TOL;}
+function rate(s,sd){
+  if(s.wind==null)return"c-nogo";
+  if(isOffshore(s.dir,sd))return"c-danger";   // off-shore = aldrig grøn
+  if(s.wind>OVER_HI)return"c-danger";
+  if(s.wind>SWEET_HI)return"c-over";          // 15-20 overkant
+  if(s.wind>=SWEET_LO)return"c-go";           // 8-15 sweet spot = grøn
+  return"c-nogo";                             // under 8 for lidt
+}
+function windColor(w,off){
+  if(w==null)return"var(--w0)";
+  if(off)return"var(--danger)";
+  if(w<5)return"var(--w0)";if(w<8)return"var(--w1)";if(w<11)return"var(--w2)";
+  if(w<13)return"var(--w3)";if(w<15)return"var(--w4)";if(w<20)return"var(--w5)";return"var(--w6)";
+}
+// ---- cache baseret på DMI's modelkørsler ----
+// HARMONIE DINI kører hver 3. time (00,03,06,09,12,15,18,21 UTC).
+// Data er typisk tilgængeligt ~50 min efter kørslens starttid pga. beregning.
+const RUN_INTERVAL_H = 3;
+const RUN_DELAY_MS = 50*60*1000; // forsinkelse før en kørsel er klar via API
+const CACHE_KEY = "kitevindue_cache_v1";
+function loadCache(){try{return JSON.parse(localStorage.getItem(CACHE_KEY)||"{}");}catch(e){return {};}}
+function saveCache(c){try{localStorage.setItem(CACHE_KEY,JSON.stringify(c));}catch(e){}}
+function spotKey(spot){return spot.lat.toFixed(4)+","+spot.lon.toFixed(4);}
+
+// tidspunktet for den seneste modelkørsel der er tilgængelig lige nu (ms siden epoch)
+function latestAvailableRun(){
+  const now=Date.now();
+  // seneste 3-timers grænse i UTC, minus beregningsforsinkelse
+  const d=new Date(now - RUN_DELAY_MS);
+  const h=d.getUTCHours();
+  const runH=Math.floor(h/RUN_INTERVAL_H)*RUN_INTERVAL_H;
+  const run=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),runH,0,0,0));
+  return run.getTime();
+}
+// cache er frisk hvis den blev hentet efter den seneste tilgængelige kørsel
+function cacheIsFresh(hit){
+  if(!hit||!hit.ts||!hit.steps||!hit.steps.length)return false;
+  return hit.ts >= latestAvailableRun();
+}
+
+// tidspunkt for hvornår NÆSTE modelkørsels data reelt er tilgængelig via API
+// (næste kørsels-slot + beregningsforsinkelsen)
+function nextRunAvailable(){
+  return latestAvailableRun() + RUN_INTERVAL_H*3600*1000 + RUN_DELAY_MS;
+}
+// opdater status-boksen i toppen
+function updateDmiStatus(){
+  const latEl=document.getElementById('dmiLatest');
+  const nextEl=document.getElementById('dmiNext');
+  if(!latEl||!nextEl)return;
+  // seneste data = serverens faktiske opdateringstidspunkt, hvis vi har det
+  if(SERVER_DATA&&SERVER_DATA.updated){
+    const u=new Date(SERVER_DATA.updated);
+    latEl.textContent=u.toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'})
+      +" ("+u.toLocaleDateString('da-DK',{weekday:'short'})+")";
+  }else{
+    const runTime=latestAvailableRun();
+    latEl.textContent="kørsel "+new Date(runTime).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
+  }
+  // næste opdatering (serverens næste planlagte kørsel)
+  const next=nextRunAvailable();
+  const minsTo=Math.max(0,Math.round((next-Date.now())/60000));
+  const h=Math.floor(minsTo/60), m=minsTo%60;
+  const rel = h>0 ? `om ${h}t ${m}m` : `om ${m}m`;
+  nextEl.textContent=new Date(next).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'})+" · "+rel;
+  nextEl.className="dmi-val"+(minsTo<=30?" soon":"");
+}
+function cacheAgeMin(spot){
+  const c=loadCache()[spotKey(spot)];
+  if(!c)return null;
+  return Math.round((Date.now()-c.ts)/60000);
+}
+
+// ---- serverside forecast: ét kald henter alle spots ----
+// Serveren (/api/forecast) opdaterer selv fra DMI hver 3. time.
+let SERVER_DATA=null;      // hele svaret fra serveren
+let SERVER_FETCHED_AT=0;   // hvornår vi sidst hentede fra serveren
+async function ensureServerData(force){
+  // genbrug hvis vi hentede for under 4 min siden (medmindre force)
+  if(!force && SERVER_DATA && (Date.now()-SERVER_FETCHED_AT)<4*60*1000) return SERVER_DATA;
+  const r=await fetch("data/forecast.json?t="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("server HTTP "+r.status);
+  const data=await r.json();
+  SERVER_DATA=data; SERVER_FETCHED_AT=Date.now();
+  return data;
+}
+
+// returnerer {steps, cached:bool}. Henter fra serverens samlede data.
+async function fetchSpot(spot,force){
+  const data=await ensureServerData(force);
+  const key=spotKey(spot);
+  const hit=data.spots&&data.spots[key];
+  if(hit&&hit.steps&&hit.steps.length){
+    return {steps:hit.steps, cached:false};
+  }
+  // spot ikke i serverens bibliotek (fx et privat spot brugeren selv har tilføjet)
+  throw new Error("ikke i serverdata");
+}
+function fmtHour(iso){const d=new Date(iso);
+  return {hr:d.toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'}),
+          day:d.toLocaleDateString('da-DK',{weekday:'short'}),date:d.toDateString()};}
+function bestWindow(steps,sd){
+  // kun dagtimer; sammenhængende blok af grøn/overkant
+  let start=null;
+  const day=steps.slice(0,HOURS).filter(s=>isDaytime(s.t));
+  for(let i=0;i<day.length;i++){
+    const c=rate(day[i],sd),good=c==="c-go"||c==="c-over";
+    if(good&&start==null)start=i;
+    if((!good||i===day.length-1)&&start!=null){
+      const e=good?i:i-1;
+      if(e-start>=0){const a=fmtHour(day[start].t),b=fmtHour(day[e].t);
+        const span=(new Date(day[e].t)-new Date(day[start].t))/3600000+1;
+        return {a,b,span};}
+    }
+    if(!good)start=null;
+  }
+  return null;
+}
+function weekBar(steps,sd){
+  const slice=steps.slice(0,WEEK_HOURS);
+  const bars=slice.map(s=>`<i style="background:${windColor(s.wind,isOffshore(s.dir,sd))}"></i>`).join("");
+  const dayMap={};
+  slice.forEach(s=>{const d=new Date(s.t),k=d.toDateString();
+    if(!dayMap[k])dayMap[k]={dow:d.getDay(),rain:false,n:0};
+    dayMap[k].n++;if(s.rain!=null&&s.rain>=0.2)dayMap[k].rain=true;});
+  const days=Object.values(dayMap).map(d=>
+    `<span class="${d.rain?'rain':''}" style="flex:${d.n} 1 0">${DAYS_SHORT[d.dow]}</span>`).join("");
+  return `<div class="bar">${bars}</div><div class="days">${days}</div>`;
+}
+const WX_ICON=s=>{if(s.rain!=null&&s.rain>=0.5)return"🌧️";if(s.rain!=null&&s.rain>=0.1)return"🌦️";return"⛅";};
+
+let map,markers=[];
+function initMap(){
+  map=L.map('map',{attributionControl:false,zoomControl:true,scrollWheelZoom:true}).setView([55.9,12.2],8);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+  L.control.attribution({prefix:false}).addAttribution('© OpenStreetMap, CARTO').addTo(map);
+  // tryk på kortet for at tilføje en ny lokation
+  map.on('click',e=>addSpotAt(e.latlng.lng,e.latlng.lat));
+}
+function pinIcon(cls,dir){
+  const c=cls.replace('c-','');
+  const col=c==='light'?'go':c;
+  // pil der peger den vej vinden BLÆSER HEN. ➤ peger mod øst (90°) ved 0° rotation,
+  // så rotation = (dir+180) - 90 = dir+90. Prik hvis ingen retning.
+  if(dir==null){
+    return L.divIcon({className:'',html:`<div class="pin ${col}"></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+  }
+  const rot=dir+90;
+  return L.divIcon({className:'',
+    html:`<div class="pin-arrow ${col}" style="transform:rotate(${rot}deg)">➤</div>`,
+    iconSize:[26,26],iconAnchor:[13,13]});
+}
+function setMarker(i,spot,cls,dir){
+  const icon=pinIcon(cls,dir);
+  if(markers[i])markers[i].setIcon(icon);
+  else{
+    const m=L.marker([spot.lat,spot.lon],{icon}).addTo(map);
+    m.bindTooltip(spot.name,{direction:'top',offset:[0,-8]});
+    m.on('click',()=>{focusSpot(i);});
+    markers[i]=m;
+  }
+}
+// zoom kortet til et spot og fold dets række ud
+function focusSpot(i){
+  const spot=SPOTS[i];
+  if(spot&&map)map.flyTo([spot.lat,spot.lon],11,{duration:.6});
+  const el=document.getElementById('spot-'+i);
+  if(el){el.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+// vælg et bestemt klokkeslæt: opdater kort-pilen til den times vindretning
+function pickHour(i,dir,cls){
+  const spot=SPOTS[i];
+  if(!spot)return;
+  const d = dir==null||dir==='null' ? null : dir;
+  setMarker(i,spot,cls,d);
+  if(map)map.flyTo([spot.lat,spot.lon],11,{duration:.5});
+  if(markers[i])markers[i].openTooltip();
+  // markér valgt celle i denne spots stribe
+  const el=document.getElementById('spot-'+i);
+  if(el){
+    el.querySelectorAll('.cell.picked').forEach(c=>c.classList.remove('picked'));
+    if(event&&event.currentTarget)event.currentTarget.classList.add('picked');
+  }
+}
+function renderSpot(i,spot,steps){
+  const now=steps[0]||{};
+  const off=isOffshore(now.dir,spot.shoreDir);
+  const win=bestWindow(steps,spot.shoreDir);
+  const best=win?`<span class="best">Næste vindue · ${win.a.day} ${win.a.hr}–${win.b.hr} · ${Math.round(win.span)}t</span>`
+                :`<span class="best none">Intet kitevindue næste 36t</span>`;
+  const nowDate=new Date().toDateString();let lastDay=null,firstToday=true;
+  const cells=steps.slice(0,HOURS).filter(s=>isDaytime(s.t)).map(s=>{
+    const cls=rate(s,spot.shoreDir),{hr,day,date}=fmtHour(s.t);
+    const showDay=date!==lastDay;lastDay=date;
+    const o=isOffshore(s.dir,spot.shoreDir);
+    const isNow=date===nowDate&&firstToday;if(isNow)firstToday=false;
+    const dirVal=s.dir==null?'null':s.dir;
+    return `<div class="cell ${cls} ${isNow?'now':''}" onclick="pickHour(${i},${dirVal},'${cls}')">
+      ${(s.rain!=null&&s.rain>=0.1)?'<span class="rain">💧</span>':''}
+      ${o?'<span class="off">⚠︎</span>':''}
+      <div class="hr">${hr}</div><div class="day">${showDay?day:'&nbsp;'}</div>
+      <div class="arr" style="transform:rotate(${s.dir==null?0:s.dir+180}deg)">↑</div>
+      <div class="spd">${s.wind==null?'–':s.wind.toFixed(0)}</div>
+      <div class="gust">${s.gust==null?'':'b '+s.gust.toFixed(0)}</div>
+    </div>`;
+  }).join("");
+  return `<div class="spot" id="spot-${i}">
+    <div class="spot-head" onclick="toggleSpot(${i})">
+      <span class="reorder" onclick="event.stopPropagation()">
+        <button onclick="moveSpot(${i},-1)" ${i===0?'disabled':''} aria-label="Flyt op">▲</button>
+        <button onclick="moveSpot(${i},1)" ${i===SPOTS.length-1?'disabled':''} aria-label="Flyt ned">▼</button>
+      </span>
+      <div class="spot-loc"><span class="mk">📍</span><h2>${spot.name}</h2></div>
+      <div class="spot-now">
+        <div class="wx"><span class="ico">${WX_ICON(now)}</span>
+          <span class="dirbadge ${off?'off':''}">
+            <span class="arr" style="transform:rotate(${now.dir==null?0:now.dir+180}deg)">↑</span></span></div>
+        <div class="vals"><b>${now.wind==null?'–':now.wind.toFixed(0)}</b> m/s · ${toCompass(now.dir)}</div>
+      </div>
+      <span class="chev">▶</span>
+      <button class="info-x" onclick="event.stopPropagation();openInfo(${i})" aria-label="Spot-info">ℹ</button>
+      <button class="del-x" onclick="event.stopPropagation();deleteSpot(${i})" aria-label="Slet spot">✕</button>
+    </div>
+    <div class="week">${weekBar(steps,spot.shoreDir)}</div>
+    <div class="detail"><div class="detail-inner">${best}
+      <div class="grid">${cells}</div>
+      <div class="detail-meta">off-shore fra ${spot.shoreDir==null?'–':spot.shoreDir+'°'} · tal = m/s, b = vindstød · scroll for flere timer</div>
+      <button class="del-btn" onclick="event.stopPropagation();deleteSpot(${i})">Fjern dette spot</button>
+    </div></div>
+  </div>`;
+}
+function renderErr(i,spot,msg){
+  return `<div class="spot" id="spot-${i}">
+    <div class="spot-head">
+      <span class="reorder" onclick="event.stopPropagation()">
+        <button onclick="moveSpot(${i},-1)" ${i===0?'disabled':''} aria-label="Flyt op">▲</button>
+        <button onclick="moveSpot(${i},1)" ${i===SPOTS.length-1?'disabled':''} aria-label="Flyt ned">▼</button>
+      </span>
+      <div class="spot-loc"><span class="mk">📍</span><h2>${spot.name}</h2></div>
+      <button class="info-x" onclick="event.stopPropagation();openInfo(${i})" aria-label="Spot-info">ℹ</button>
+      <button class="del-x" onclick="event.stopPropagation();deleteSpot(${i})" aria-label="Slet spot">✕</button>
+    </div>
+    <div class="err-msg">Kunne ikke hente — ${msg}</div></div>`;
+}
+// ---- lokal lagring: brugerens favorit-udvalg (rækkefølge + hvilke spots) ----
+function toggleSpot(i){
+  const el=document.getElementById('spot-'+i);
+  const willOpen=!el.classList.contains('open');
+  el.classList.toggle('open');
+  if(willOpen){
+    const spot=SPOTS[i];
+    if(spot&&map)map.flyTo([spot.lat,spot.lon],11,{duration:.6});
+  }
+}
+
+// ---- spot-info modal ----
+let infoIdx=null;
+const INFO_LABELS={desc:"Beskrivelse",parking:"Parkering",level:"Egnet niveau",notes:"Vær opmærksom på"};
+function openInfo(i){
+  infoIdx=i;
+  const spot=SPOTS[i];
+  if(!spot)return;
+  document.getElementById('infoTitle').textContent=spot.name;
+  renderInfoBody(spot);
+  document.getElementById('infoEdit').onclick=()=>editInfo(i);
+  document.getElementById('infoModal').classList.add('open');
+}
+function renderInfoBody(spot){
+  const info=spot.info||{};
+  const body=document.getElementById('infoBody');
+  const block=(key)=>{
+    const val=info[key];
+    const has=val&&String(val).trim()!=="";
+    if(key==="level"&&has){
+      return `<div class="info-block"><div class="lbl">${INFO_LABELS[key]}</div>
+        <span class="lvl-badge">${val}</span></div>`;
+    }
+    return `<div class="info-block"><div class="lbl">${INFO_LABELS[key]}</div>
+      <div class="txt ${has?'':'empty'}">${has?val:'Ingen info endnu — tryk "Rediger info".'}</div></div>`;
+  };
+  body.innerHTML=["desc","parking","level","notes"].map(block).join("")
+    +`<div class="info-block"><div class="lbl">Position</div>
+       <div class="txt" style="font-family:var(--mono);font-size:13px">${spot.lat.toFixed(4)}, ${spot.lon.toFixed(4)}${spot.shoreDir!=null?' · off-shore fra '+spot.shoreDir+'°':''}</div></div>`;
+}
+function closeInfo(){
+  document.getElementById('infoModal').classList.remove('open');
+  infoIdx=null;
+}
+function editInfo(i){
+  const spot=SPOTS[i];
+  const info=spot.info||{};
+  const desc=prompt("Beskrivelse af spottet:",info.desc||"");
+  if(desc===null)return;
+  const parking=prompt("Parkering:",info.parking||"");
+  if(parking===null)return;
+  const level=prompt("Egnet niveau (fx Begynder / Øvet / Ekspert):",info.level||"");
+  if(level===null)return;
+  const notes=prompt("Ting man skal være opmærksom på:",info.notes||"");
+  if(notes===null)return;
+  spot.info={desc:desc.trim(),parking:parking.trim(),level:level.trim(),notes:notes.trim()};
+  saveSpots();
+  // opdater også i den lokale kopi af biblioteket
+  const li=LIBRARY.findIndex(s=>keyOf(s)===keyOf(spot));
+  if(li>=0){LIBRARY[li].info=spot.info;}
+  renderInfoBody(spot);
+}
+const FAV_KEY="kitevindue_favs_v2";
+function saveSpots(){ // gem favoritter (hele objekter, så egne private spots også overlever)
+  try{localStorage.setItem(FAV_KEY,JSON.stringify(SPOTS));}catch(e){}
+}
+function loadSpots(){
+  try{const s=JSON.parse(localStorage.getItem(FAV_KEY));
+    if(Array.isArray(s))SPOTS=s;}catch(e){}
+}
+
+// ---- fælles bibliotek via JSONBin ----
+// Hent det fælles bibliotek fra repo'et (data/spots.json).
+// Biblioteket vedligeholdes i GitHub — se "Tilføj spot" nedenfor.
+async function syncPull(){
+  try{
+    const r=await fetch("data/spots.json?t="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const arr=await r.json();
+    if(Array.isArray(arr)&&arr.length)LIBRARY=arr;
+    return true;
+  }catch(e){setSyncMsg("Kunne ikke hente bibliotek: "+e.message,"err");return false;}
+}
+function setSyncMsg(t,cls){
+  const el=document.getElementById('searchMsg');
+  if(el){el.textContent=t||"";el.className="search-msg"+(cls?" "+cls:"");}
+}
+// Spots brugeren tilføjer selv gemmes lokalt på enheden.
+// For at få et spot ind i det FÆLLES bibliotek (så alle får forecast for det),
+// skal det tilføjes i data/spots.json på GitHub.
+async function addToLibrary(spot){
+  if(!LIBRARY.some(s=>keyOf(s)===keyOf(spot)))LIBRARY.push(spot);
+  setSyncMsg("Tilføjet lokalt. For fælles brug: læg spottet i data/spots.json på GitHub.","");
+}
+
+// ---- bibliotek-panel: vælg favoritter fra fælles katalog ----
+function toggleLibrary(){
+  const el=document.getElementById('library');
+  el.classList.toggle('open');
+  if(el.classList.contains('open'))renderLibrary();
+}
+function isFav(spot){return SPOTS.some(s=>keyOf(s)===keyOf(spot));}
+function renderLibrary(){
+  const box=document.getElementById('libList');
+  if(!LIBRARY.length){box.innerHTML='<div class="library-head">Biblioteket er tomt endnu.</div>';return;}
+  box.innerHTML=LIBRARY.map((s,i)=>{
+    const on=isFav(s);
+    return `<div class="lib-item">
+      <button class="lib-check ${on?'on':''}" onclick="toggleFav(${i})" aria-label="Vælg">${on?'✓':'+'}</button>
+      <span class="name">${s.name}</span>
+      <span class="coord">${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}</span>
+    </div>`;
+  }).join("");
+}
+function toggleFav(libIdx){
+  const spot=LIBRARY[libIdx];
+  if(!spot)return;
+  const at=SPOTS.findIndex(s=>keyOf(s)===keyOf(spot));
+  if(at>=0){SPOTS.splice(at,1);}         // fjern fra favoritter
+  else{SPOTS.push({...spot});}           // tilføj til favoritter
+  saveSpots();
+  renderLibrary();
+  load(); // opdater hovedlisten
+}
+
+// ---- omarrangér rækker med op/ned pile ----
+function moveSpot(i,dir){
+  const j=i+dir;
+  if(j<0||j>=SPOTS.length)return;
+  const tmp=SPOTS[i];SPOTS[i]=SPOTS[j];SPOTS[j]=tmp;
+  saveSpots();
+  rerender();  // vis ny rækkefølge straks fra cache
+  load();      // hent evt. spots der mangler i cache (cachede er gratis)
+}
+
+// ---- slet et spot ----
+function deleteSpot(i){
+  if(!confirm("Fjern \""+SPOTS[i].name+"\" fra dine spots?"))return;
+  SPOTS.splice(i,1);
+  saveSpots();
+  rerender(); // opdater listen og markører straks
+  load();     // hent evt. resterende der mangler
+}
+
+// ---- indstillinger: min/maks vind ----
+function toggleSettings(){document.getElementById('settings').classList.toggle('open');}
+function initSettings(){
+  const lo=document.getElementById('loRange'), hi=document.getElementById('hiRange');
+  const loN=document.getElementById('loNum'), hiN=document.getElementById('hiNum');
+  const setAll=(l,h)=>{lo.value=l;hi.value=h;loN.value=l;hiN.value=h;};
+  setAll(SWEET_LO,SWEET_HI);
+  updateRangeTag();
+  // apply fra en given kilde: 'lo' eller 'hi'
+  const apply=(src)=>{
+    let l = src==='loNum' ? parseInt(loN.value,10) : parseInt(lo.value,10);
+    let h = src==='hiNum' ? parseInt(hiN.value,10) : parseInt(hi.value,10);
+    // hvis kilden var en skyder, læs den anden fra dens skyder; ellers fra tal
+    if(src==='lo'||src==='hi'){l=parseInt(lo.value,10);h=parseInt(hi.value,10);}
+    if(src==='loNum'){h=parseInt(hi.value,10);}
+    if(src==='hiNum'){l=parseInt(lo.value,10);}
+    if(isNaN(l))l=SWEET_LO; if(isNaN(h))h=SWEET_HI;
+    l=Math.max(1,Math.min(l,40)); h=Math.max(1,Math.min(h,40));
+    if(l>=h){ if(src==='lo'||src==='loNum')h=l+1; else l=h-1; }
+    SWEET_LO=l; SWEET_HI=h;
+    setAll(l,h);
+    updateRangeTag();
+    savePrefs();
+    rerender(); // farver/vinduer opdateres straks uden ny DMI-hentning
+  };
+  lo.addEventListener('input',()=>apply('lo'));
+  hi.addEventListener('input',()=>apply('hi'));
+  loN.addEventListener('change',()=>apply('loNum'));
+  hiN.addEventListener('change',()=>apply('hiNum'));
+  loN.addEventListener('input',()=>apply('loNum'));
+  hiN.addEventListener('input',()=>apply('hiNum'));
+}
+function updateRangeTag(){
+  const v=document.getElementById('rangeVal');
+  if(v)v.textContent=SWEET_LO+"–"+SWEET_HI+" m/s";
+}
+
+// Tilføj ny lokation ved at trykke på kortet
+async function addSpotAt(lon,lat){
+  const name=prompt("Navn på nyt spot?\n(Koordinat: "+lat.toFixed(4)+", "+lon.toFixed(4)+")");
+  if(!name)return;
+  const sdRaw=prompt("Off-shore retning i grader (vinden BLÆSER FRA når den går ud mod havet).\n"
+    +"N=0, Ø=90, S=180, V=270. Lad stå tom for ingen off-shore-advarsel.","");
+  let shoreDir=null;
+  if(sdRaw!=null&&sdRaw.trim()!==""){const v=parseFloat(sdRaw);if(!isNaN(v))shoreDir=((v%360)+360)%360;}
+  await addSpot(name.trim(),lon,lat,shoreDir);
+}
+// Fælles: tilføj spot til listen, gem, hent, åbn
+async function addSpot(name,lon,lat,shoreDir){
+  const spot={name,lon:+lon.toFixed(4),lat:+lat.toFixed(4),shoreDir:shoreDir??null};
+  SPOTS.push(spot);
+  saveSpots();
+  addToLibrary(spot); // del med alle via det fælles bibliotek (hvis synk er slået til)
+  await load();
+  const idx=SPOTS.length-1;
+  const el=document.getElementById('spot-'+idx);
+  if(el){el.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'center'});}
+  if(map)map.setView([lat,lon],10);
+}
+
+// ---- Plus Code (Open Location Code) minimal decoder ----
+const OLC_ALPHABET="23456789CFGHJMPQRVWX";
+function isPlusCode(s){return /^[23456789CFGHJMPQRVWX]{4,}\+[23456789CFGHJMPQRVWX]{0,}$/i.test(s.trim());}
+function decodePlusCode(code){
+  code=code.trim().toUpperCase().replace(/\s+/g,"");
+  const sep=code.indexOf('+');
+  if(sep<0)return null;
+  const digits=code.replace('+','');
+  let lat=-90,lng=-180,latRes=20,lngRes=20,i=0;
+  // par-trin (op til 10 tegn = 5 par)
+  for(;i<Math.min(digits.length,10);i+=2){
+    const a=OLC_ALPHABET.indexOf(digits[i]),b=OLC_ALPHABET.indexOf(digits[i+1]);
+    if(a<0||b<0)return null;
+    lat+=a*latRes;lng+=b*lngRes;
+    latRes/=20;lngRes/=20;
+  }
+  // grid-forfining (tegn 11+)
+  let latGrid=latRes*20/4, lngGrid=lngRes*20/5; // sidste opløsning før grid
+  latGrid=latRes;lngGrid=lngRes;
+  for(;i<digits.length;i++){
+    const d=OLC_ALPHABET.indexOf(digits[i]);
+    if(d<0)return null;
+    const row=Math.floor(d/4),col=d%4;
+    latGrid/=5;lngGrid/=4;
+    lat+=row*latGrid;lng+=col*lngGrid;
+  }
+  // centrér i cellen
+  return {lat:lat+latRes/2, lng:lng+lngRes/2};
+}
+
+// ---- adresse-geokodning via OpenStreetMap Nominatim (ingen nøgle) ----
+async function geocode(q){
+  const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q);
+  const r=await fetch(url,{headers:{"Accept":"application/json"}});
+  if(!r.ok)throw new Error("geokoder svarede "+r.status);
+  const arr=await r.json();
+  if(!arr.length)return null;
+  return {lat:parseFloat(arr[0].lat),lng:parseFloat(arr[0].lon),label:arr[0].display_name};
+}
+
+function setSearchMsg(text,cls){
+  const el=document.getElementById('searchMsg');
+  el.textContent=text||"";
+  el.className="search-msg"+(cls?" "+cls:"");
+}
+
+// ---- parse koordinater i mange formater ----
+// Håndterer bl.a.:
+//   55.6504, 12.6441
+//   55,82173° N, 11,93662° E   (dansk komma-decimal + grader + N/E)
+//   55.82173 N 11.93662 E
+//   N 55.8217 E 11.9366
+function parseCoords(raw){
+  let s=raw.trim();
+  if(s.includes('+'))return null; // '+' betyder Plus Code, ikke koordinat
+  // find alle tal-forekomster med evt. decimal (både . og , som decimaltegn),
+  // sammen med en evt. efterfølgende eller foranstående retningsbogstav.
+  // Normalisér: fjern grad-tegn, gør komma-decimal til punktum men bevar separator-komma.
+  // Strategi: udtræk (tal)(retning) par.
+  const cleaned=s.replace(/°/g,' ').replace(/\s+/g,' ').trim();
+  // match tal (med . eller , decimal) evt. med N/S/E/W/Ø/V lige før eller efter
+  const re=/([NSEWØV])?\s*(-?\d{1,3}(?:[.,]\d+)?)\s*([NSEWØV])?/gi;
+  const found=[];
+  let m;
+  while((m=re.exec(cleaned))!==null){
+    if(m[2]===undefined)continue;
+    const numStr=m[2].replace(',','.');
+    const val=parseFloat(numStr);
+    if(isNaN(val))continue;
+    const dir=(m[1]||m[3]||'').toUpperCase();
+    found.push({val,dir});
+    if(found.length>=2 && re.lastIndex>=cleaned.length)break;
+  }
+  if(found.length<2)return null;
+  // afgør hvilket tal er lat og hvilket er lon
+  let latObj=null,lonObj=null;
+  for(const f of found){
+    if(f.dir==='N'||f.dir==='S')latObj=f;
+    else if(f.dir==='E'||f.dir==='W'||f.dir==='Ø'||f.dir==='V')lonObj=f;
+  }
+  // hvis ingen retninger: antag rækkefølge lat, lon
+  if(!latObj&&!lonObj){latObj=found[0];lonObj=found[1];}
+  else if(latObj&&!lonObj){lonObj=found.find(f=>f!==latObj);}
+  else if(!latObj&&lonObj){latObj=found.find(f=>f!==lonObj);}
+  if(!latObj||!lonObj)return null;
+  let lat=latObj.val, lon=lonObj.val;
+  if(latObj.dir==='S')lat=-Math.abs(lat);
+  if(lonObj.dir==='W')lon=-Math.abs(lon);
+  // gyldighedstjek
+  if(Math.abs(lat)>90||Math.abs(lon)>180)return null;
+  return {lat,lng:lon};
+}
+
+async function doSearch(){
+  const inp=document.getElementById('searchInput');
+  const btn=document.getElementById('searchBtn');
+  const q=inp.value.trim();
+  if(!q){setSearchMsg("Skriv en adresse, et sted eller en Plus Code.","err");return;}
+  btn.disabled=true;
+  try{
+    let lat,lng,label=q;
+    const coords=parseCoords(q);
+    if(coords){
+      // koordinater i et af de understøttede formater (grad-tegn, N/E, komma-decimal…)
+      lat=coords.lat;lng=coords.lng;
+      label=lat.toFixed(4)+", "+lng.toFixed(4);
+    }else if(isPlusCode(q)){
+      // fuld Plus Code (indeholder nok tegn før +) kan afkodes direkte;
+      // korte "område"-koder kræver en by — bed brugeren tilføje den
+      const before=q.split('+')[0].replace(/\s/g,'');
+      if(before.length<8){
+        setSearchMsg("Kort Plus Code kræver by, f.eks. '9F7J+2X Hundested'. Prøver som søgning…","");
+        const g=await geocode(q); // Nominatim forstår faktisk mange plus codes m. by
+        if(!g){setSearchMsg("Kunne ikke finde den Plus Code. Tilføj by efter koden.","err");btn.disabled=false;return;}
+        lat=g.lat;lng=g.lng;label=g.label;
+      }else{
+        const d=decodePlusCode(q);
+        if(!d){setSearchMsg("Ugyldig Plus Code.","err");btn.disabled=false;return;}
+        lat=d.lat;lng=d.lng;
+      }
+    }else{
+      setSearchMsg("Søger…","");
+      const g=await geocode(q);
+      if(!g){setSearchMsg("Fandt ingen match. Prøv mere præcist eller tilføj by/land.","err");btn.disabled=false;return;}
+      lat=g.lat;lng=g.lng;label=g.label;
+    }
+    // navn: kort udgave af label eller selve søgningen
+    const shortName=(label.split(',')[0]||q).trim();
+    const name=prompt("Navn på spot?",shortName)||shortName;
+    const sdRaw=prompt("Off-shore retning i grader (vinden BLÆSER FRA når den går ud mod havet).\n"
+      +"N=0, Ø=90, S=180, V=270. Lad stå tom for ingen off-shore-advarsel.","");
+    let shoreDir=null;
+    if(sdRaw!=null&&sdRaw.trim()!==""){const v=parseFloat(sdRaw);if(!isNaN(v))shoreDir=((v%360)+360)%360;}
+    setSearchMsg("Tilføjet: "+name+" ("+lat.toFixed(4)+", "+lng.toFixed(4)+")","ok");
+    inp.value="";
+    await addSpot(name.trim(),lng,lat,shoreDir);
+  }catch(e){
+    setSearchMsg("Fejl: "+e.message,"err");
+  }
+  btn.disabled=false;
+}
+
+// Gentegn alle spots fra cache/hukommelse UDEN at hente fra DMI.
+// Bruges når rækkefølge eller min/maks ændres — også midt i en igangværende hentning.
+function rerender(){
+  markers.forEach(m=>{if(m)map.removeLayer(m);});
+  markers=[];
+  const list=document.getElementById('list');
+  const cache=loadCache();
+  list.innerHTML=SPOTS.map((s,i)=>{
+    const c=cache[spotKey(s)];
+    if(c&&c.steps&&c.steps.length){
+      setMarker(i,s,rate(c.steps[0],s.shoreDir),c.steps[0].dir);
+      return renderSpot(i,s,c.steps);
+    }
+    setMarker(i,s,"c-nogo",null);
+    // intet cachet endnu (spot hentes måske stadig): vis skelet-holder
+    return skeletonHolder(i,s);
+  }).join("");
+}
+
+// skelet-holder med fungerende pile (så rækkefølge kan ændres mens data hentes)
+function skeletonHolder(i,s){
+  return `<div class="spot" id="slot-${i}"><div class="spot-head">
+    <span class="reorder" onclick="event.stopPropagation()">
+      <button onclick="moveSpot(${i},-1)" ${i===0?'disabled':''} aria-label="Flyt op">▲</button>
+      <button onclick="moveSpot(${i},1)" ${i===SPOTS.length-1?'disabled':''} aria-label="Flyt ned">▼</button>
+    </span>
+    <div class="spot-loc"><span class="mk">📍</span><h2>${s.name}</h2></div>
+    <button class="del-x" onclick="event.stopPropagation();deleteSpot(${i})" aria-label="Slet spot">✕</button></div>
+    <div class="skel pulse"></div></div>`;
+}
+
+let loadGen=0; // øges hver gang vi vil annullere en igangværende hentning
+async function load(force){
+  const myGen=++loadGen;
+  markers.forEach(m=>{if(m)map.removeLayer(m);});
+  markers=[];
+  const list=document.getElementById('list');
+  list.innerHTML=SPOTS.map((s,i)=>skeletonHolder(i,s)).join("");
+
+  // hent hele forecast fra serveren i ét kald
+  let serverOk=true;
+  try{ await ensureServerData(force); }
+  catch(e){ serverOk=false; }
+  if(myGen!==loadGen)return;
+
+  // fordel til hvert spot fra serverens data
+  const res=[];
+  for(let i=0;i<SPOTS.length;i++){
+    let r;
+    try{
+      const v=await fetchSpot(SPOTS[i],force); // slår bare op i allerede hentet serverdata
+      r={status:"fulfilled",value:v};
+    }catch(e){
+      r={status:"rejected",reason:e};
+    }
+    res.push(r);
+    const holder=document.getElementById('slot-'+i);
+    if(holder){
+      if(r.status==="fulfilled"&&r.value&&r.value.steps&&r.value.steps.length){
+        setMarker(i,SPOTS[i],rate(r.value.steps[0],SPOTS[i].shoreDir),r.value.steps[0].dir);
+        holder.outerHTML=renderSpot(i,SPOTS[i],r.value.steps);
+      }else{
+        setMarker(i,SPOTS[i],"c-nogo",null);
+        const msg = serverOk ? "ikke i serverens bibliotek" : "kunne ikke nå serveren";
+        holder.outerHTML=renderErr(i,SPOTS[i],msg);
+      }
+    }
+  }
+  if(myGen!==loadGen)return;
+  const ok=res.some(r=>r&&r.status==="fulfilled"&&r.value&&r.value.steps&&r.value.steps.length);
+  document.getElementById('updated').innerHTML=ok
+    ?`opdateret<br><b>${new Date().toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'})}</b>`
+    :`<span style="color:var(--danger)">${serverOk?'ingen data':'server utilgængelig'}</span>`;
+  updateDmiStatus();
+}
+loadPrefs();      // hent gemt min/maks vind
+loadSpots();      // hent brugerens gemte favoritter
+initMap();
+initSettings();
+updateDmiStatus();
+setInterval(updateDmiStatus,60*1000); // opdater nedtælling hvert minut
+document.getElementById('refresh').addEventListener('click',async()=>{
+  const btn=document.getElementById('refresh');
+  const orig=btn.textContent;
+  btn.textContent="Opdaterer…"; btn.disabled=true;
+  await load(); // henter kun forældede/fejlede spots — friske springes over
+  btn.disabled=false; btn.textContent=orig;
+});
+document.getElementById('searchBtn').addEventListener('click',doSearch);
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+document.getElementById('libBtn').addEventListener('click',toggleLibrary);
+
+// opstart: hent fælles bibliotek, seed favoritter første gang, tegn og hent vejr
+(async function start(){
+  const hadSaved = localStorage.getItem(FAV_KEY)!==null;
+  await syncPull();   // hent fælles bibliotek fra data/spots.json
+  // første gang på denne enhed: giv brugeren hele biblioteket som favoritter
+  if(!hadSaved){SPOTS=LIBRARY.map(s=>({...s}));saveSpots();}
+  load();
+})();
+
+// tjek periodisk — cachen sørger for at kun data >1t faktisk genhentes fra DMI
+// tjek hver 30. min — cachen henter kun faktisk fra DMI når en ny modelkørsel (hver 3. time) er landet
+setInterval(()=>{if(!document.hidden)load();},30*60*1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
+</script>
+<!--
+==================================================================
+  SÅDAN VIRKER DET
+==================================================================
+- data/spots.json  = det fælles bibliotek af kitespots.
+  Vil du tilføje et spot for ALLE, så rediger den fil på GitHub.
+- data/forecast.json = vejrdata, hentet automatisk hver 3. time
+  af en GitHub Action (.github/workflows/forecast.yml).
+- Spots du tilføjer i appen gemmes kun på din egen enhed.
+==================================================================
+-->
+</body>
+</html>
