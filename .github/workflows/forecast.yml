@@ -1,0 +1,37 @@
+name: Hent vejrprognose
+
+on:
+  schedule:
+    - cron: '50 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Hent repo
+        uses: actions/checkout@v4
+
+      - name: Opsæt Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Hent forecast
+        run: node fetch-forecast.mjs
+
+      - name: Commit opdateret forecast
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/forecast.json
+          if git diff --staged --quiet; then
+            echo "Ingen ændringer at committe"
+          else
+            git commit -m "Opdater forecast $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
