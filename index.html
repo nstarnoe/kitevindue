@@ -166,7 +166,10 @@
     background:rgba(0,0,0,.18);border:1px solid var(--line);position:relative;scroll-snap-align:start}
   .cell.now{outline:2px solid var(--chalk);outline-offset:1px}
   .cell .hr{font-family:var(--mono);font-size:10px;color:var(--fog)}
-  .cell .day{font-family:var(--mono);font-size:8px;color:var(--fog);opacity:.7;min-height:9px}
+  .cell .day{font-family:var(--mono);font-size:9px;color:var(--fog);opacity:.9;min-height:11px;font-weight:700}
+  .cell.day-start{margin-left:10px;border-left:2px solid rgba(159,192,212,.55)}
+  .cell.day-start:first-child{margin-left:0}
+  .cell .day.full{color:var(--chalk);font-size:9px;white-space:nowrap}
   .cell .arr{font-size:16px;line-height:1;margin:5px 0 3px;display:inline-block}
   .cell .spd{font-family:var(--mono);font-size:15px;font-weight:800;line-height:1}
   .cell .gust{font-family:var(--mono);font-size:9px;color:var(--fog);margin-top:2px}
@@ -351,7 +354,6 @@ function loadPrefs(){
 }
 function savePrefs(){try{localStorage.setItem(PREF_KEY,JSON.stringify({lo:SWEET_LO,hi:SWEET_HI}));}catch(e){}}
 const DAY_START=6, DAY_END=21;   // vis kun timer i dette interval (lokal tid)
-const HOURS=36, WEEK_HOURS=144;
 const isDaytime=iso=>{const h=new Date(iso).getHours();return h>=DAY_START&&h<=DAY_END;};
 const BASE="https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position";
 const P=["wind-speed-10m","wind-dir-10m","gust-wind-speed-10m","total-precipitation","precipitation-type"];
@@ -464,7 +466,7 @@ function fmtHour(iso){const d=new Date(iso);
 function bestWindow(steps,sd){
   // kun dagtimer; sammenhængende blok af grøn/overkant
   let start=null;
-  const day=steps.slice(0,HOURS).filter(s=>isDaytime(s.t));
+  const day=steps.filter(s=>isDaytime(s.t));
   for(let i=0;i<day.length;i++){
     const c=rate(day[i],sd),good=c==="c-go"||c==="c-over";
     if(good&&start==null)start=i;
@@ -479,7 +481,7 @@ function bestWindow(steps,sd){
   return null;
 }
 function weekBar(steps,sd){
-  const slice=steps.slice(0,WEEK_HOURS);
+  const slice=steps;
   const bars=slice.map(s=>`<i style="background:${windColor(s.wind,isOffshore(s.dir,sd))}"></i>`).join("");
   const dayMap={};
   slice.forEach(s=>{const d=new Date(s.t),k=d.toDateString();
@@ -549,18 +551,24 @@ function renderSpot(i,spot,steps){
   const off=isOffshore(now.dir,spot.shoreDir);
   const win=bestWindow(steps,spot.shoreDir);
   const best=win?`<span class="best">Næste vindue · ${win.a.day} ${win.a.hr}–${win.b.hr} · ${Math.round(win.span)}t</span>`
-                :`<span class="best none">Intet kitevindue næste 36t</span>`;
+                :`<span class="best none">Intet kitevindue i forecastperioden</span>`;
   const nowDate=new Date().toDateString();let lastDay=null,firstToday=true;
-  const cells=steps.slice(0,HOURS).filter(s=>isDaytime(s.t)).map(s=>{
+  // Vis ALLE tilgængelige dagtimer i forecastet – ikke kun de første 36 timer.
+  // Hvis fetch-forecast.mjs fx henter 7 dage, vises alle 7 dage her.
+  const cells=steps.filter(s=>isDaytime(s.t)).map(s=>{
     const cls=rate(s,spot.shoreDir),{hr,day,date}=fmtHour(s.t);
+    const d=new Date(s.t);
     const showDay=date!==lastDay;lastDay=date;
+    const dayLabel=showDay
+      ? `${day.toUpperCase()} ${d.toLocaleDateString('da-DK',{day:'numeric',month:'numeric'})}`
+      : '&nbsp;';
     const o=isOffshore(s.dir,spot.shoreDir);
     const isNow=date===nowDate&&firstToday;if(isNow)firstToday=false;
     const dirVal=s.dir==null?'null':s.dir;
-    return `<div class="cell ${cls} ${isNow?'now':''}" onclick="pickHour(${i},${dirVal},'${cls}')">
+    return `<div class="cell ${cls} ${isNow?'now':''} ${showDay?'day-start':''}" onclick="pickHour(${i},${dirVal},'${cls}')">
       ${(s.rain!=null&&s.rain>=0.1)?'<span class="rain">💧</span>':''}
       ${o?'<span class="off">⚠︎</span>':''}
-      <div class="hr">${hr}</div><div class="day">${showDay?day:'&nbsp;'}</div>
+      <div class="hr">${hr}</div><div class="day ${showDay?'full':''}">${dayLabel}</div>
       <div class="arr" style="transform:rotate(${s.dir==null?0:s.dir+180}deg)">↑</div>
       <div class="spd">${s.wind==null?'–':s.wind.toFixed(0)}</div>
       <div class="gust">${s.gust==null?'':'b '+s.gust.toFixed(0)}</div>
@@ -586,7 +594,7 @@ function renderSpot(i,spot,steps){
     <div class="week">${weekBar(steps,spot.shoreDir)}</div>
     <div class="detail"><div class="detail-inner">${best}
       <div class="grid">${cells}</div>
-      <div class="detail-meta">off-shore fra ${spot.shoreDir==null?'–':spot.shoreDir+'°'} · tal = m/s, b = vindstød · scroll for flere timer</div>
+      <div class="detail-meta">off-shore fra ${spot.shoreDir==null?'–':spot.shoreDir+'°'} · tal = m/s, b = vindstød · scroll for hele forecastperioden</div>
       <button class="del-btn" onclick="event.stopPropagation();deleteSpot(${i})">Fjern dette spot</button>
     </div></div>
   </div>`;
