@@ -1,7 +1,22 @@
 # Kitevindue
 
-Kitesurf-prognose for Sjælland. Data: DMI HARMONIE DINI, hentet direkte fra
-DMI's Open Data API (`opendataapi.dmi.dk`) — ingen mellemled, ingen API-nøgle.
+Kitesurf-prognose for Sjælland. Data hentes via Open-Meteo (`api.open-meteo.com`)
+og kombinerer to modeller pr. time, så vi får en hel uges prognose:
+
+- **DMI HARMONIE DINI** (`dmi_harmonie_arome_europe`) — høj opløsning (2 km), men
+  dækker kun ca. 2,5 dage. Bruges altid når den har data.
+- **DWD ICON** (`icon_seamless`) — lavere opløsning, men dækker en hel uge. Fylder
+  hullet ud efter DMI's 2,5 dage.
+
+Hver time er mærket med hvilken model den stammer fra (`src: "dmi"` / `"icon"`),
+og ICON-timer vises med en lilla farve/mærkat i appen, så det altid er tydeligt
+hvilken del af ugen der er den mere præcise DMI-prognose.
+
+Vi kalder ikke DMI's egen API (`opendataapi.dmi.dk`) direkte, da den rate-limiter
+hårdt (~1 kald/sekund) og giver HTTP 429 ved gentagne opslag — særligt fra en browser
+med flere spots. Open-Meteo håndterer det i ét batch-kald for alle spots, og med et
+eksplicit `models=`-parameter (ikke "best_match") sammensplejser Open-Meteo ikke
+modeller vi ikke selv har bedt om.
 
 Alt kører gratis på GitHub — ingen server, ingen credits der løber tør.
 
