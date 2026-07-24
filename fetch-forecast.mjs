@@ -3,7 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const OM_BASE = "https://api.open-meteo.com/v1/forecast";
-const FORECAST_DAYS = 3;
+const FORECAST_DAYS = 7;
 
 function toSteps(hourly){
   const out = [];
