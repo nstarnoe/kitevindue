@@ -452,16 +452,60 @@ async function ensureServerData(force){
   return data;
 }
 
-// returnerer {steps, cached:bool}. Henter fra serverens samlede data.
+// returnerer {steps, cached:bool}. Henter fra serverens samlede data;
+// falder tilbage til direkte DMI-opslag i browseren hvis spottet ikke er der
+// (fx et privat spot brugeren selv har tilføjet, eller et spot der fejlede server-side).
 async function fetchSpot(spot,force){
-  const data=await ensureServerData(force);
+  let data=null;
+  try{ data=await ensureServerData(force); }catch(e){ /* server utilgængelig — prøv DMI direkte nedenfor */ }
   const key=spotKey(spot);
-  const hit=data.spots&&data.spots[key];
+  const hit=data&&data.spots&&data.spots[key];
   if(hit&&hit.steps&&hit.steps.length){
     return {steps:hit.steps, cached:false};
   }
-  // spot ikke i serverens bibliotek (fx et privat spot brugeren selv har tilføjet)
-  throw new Error("ikke i serverdata");
+  return await fetchSpotDirect(spot,force);
+}
+
+// ---- direkte DMI-opslag fra browseren (fallback for spots uden for det fælles bibliotek) ----
+const DMI_DIRECT_BASE="https://opendataapi.dmi.dk/v1/forecastedr/collections/harmonie_dini_sf/position";
+const DMI_DIRECT_PARAMS="wind-speed-10m,wind-dir-10m,gust-wind-speed-10m,total-precipitation";
+function dmiFeaturesToSteps(features){
+  const rows=features.map(f=>({t:f.properties&&f.properties.step,...f.properties}))
+    .filter(r=>!!r.t).sort((a,b)=>a.t.localeCompare(b.t));
+  let prevPrecip=null;
+  return rows.map(r=>{
+    const precipRaw=r["total-precipitation"];
+    let rain=null;
+    if(precipRaw!=null){
+      rain=prevPrecip==null?0:Math.max(0,+(precipRaw-prevPrecip).toFixed(2));
+      prevPrecip=precipRaw;
+    }
+    return {
+      t:r.t.length===16?r.t+":00Z":r.t,
+      wind:r["wind-speed-10m"]??null,
+      gust:r["gust-wind-speed-10m"]??null,
+      dir:r["wind-dir-10m"]??null,
+      rain, ptype:null,
+    };
+  });
+}
+async function fetchSpotDirect(spot,force){
+  const cache=loadCache();
+  const ck=spotKey(spot);
+  const hit=cache[ck];
+  if(!force&&cacheIsFresh(hit)){
+    return {steps:hit.steps, cached:true};
+  }
+  const url=`${DMI_DIRECT_BASE}?coords=POINT(${spot.lon} ${spot.lat})&crs=crs84`
+    +`&parameter-name=${DMI_DIRECT_PARAMS}&f=GeoJSON`;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("DMI HTTP "+r.status);
+  const json=await r.json();
+  if(!json.features||!json.features.length)throw new Error("intet DMI-data for dette punkt");
+  const steps=dmiFeaturesToSteps(json.features);
+  cache[ck]={ts:Date.now(),steps};
+  saveCache(cache);
+  return {steps,cached:false};
 }
 function fmtHour(iso){const d=new Date(iso);
   return {hr:d.toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'}),
@@ -1025,7 +1069,7 @@ async function load(force){
         holder.outerHTML=renderSpot(i,SPOTS[i],r.value.steps);
       }else{
         setMarker(i,SPOTS[i],"c-nogo",null);
-        const msg = serverOk ? "ikke i serverens bibliotek" : "kunne ikke nå serveren";
+        const msg = r.reason&&r.reason.message ? r.reason.message : "kunne ikke hente vejrdata";
         holder.outerHTML=renderErr(i,SPOTS[i],msg);
       }
     }
