@@ -1,13 +1,290 @@
 [
-  { "name": "Gilleleje Havn",     "lon": 12.3111, "lat": 56.1274, "shoreDir": 180 },
-  { "name": "Sølager",            "lon": 11.8994, "lat": 55.9466, "shoreDir": 90 },
-  { "name": "Nivå",               "lon": 12.5272, "lat": 55.9385, "shoreDir": 270 },
-  { "name": "Hornbæk",            "lon": 12.4469, "lat": 56.0931, "shoreDir": 180 },
-  { "name": "Lynæs",              "lon": 11.8626, "lat": 55.9441, "shoreDir": 90 },
-  { "name": "Amager Strandpark",  "lon": 12.6441, "lat": 55.6504, "shoreDir": 270 },
-  { "name": "Køge Sydstrand",     "lon": 12.1917, "lat": 55.4477, "shoreDir": 270 },
-  { "name": "Dalby Huse",         "lon": 11.9366, "lat": 55.8217, "shoreDir": 270 },
-  { "name": "Sanddopperne",       "lon": 11.3781, "lat": 55.7760, "shoreDir": 270 },
-  { "name": "Farøbroen vest",     "lon": 11.9800, "lat": 54.9600, "shoreDir": 270 },
-  { "name": "Farøbroen øst",      "lon": 12.0200, "lat": 54.9600, "shoreDir": 90 }
+  {
+    "name": "Gilleleje Havn",
+    "lon": 12.3111,
+    "lat": 56.1274,
+    "shoreDir": 180
+  },
+  {
+    "name": "Sølager",
+    "lon": 11.8994,
+    "lat": 55.9466,
+    "shoreDir": 90
+  },
+  {
+    "name": "Nivå",
+    "lon": 12.5272,
+    "lat": 55.9385,
+    "shoreDir": 270
+  },
+  {
+    "name": "Hornbæk",
+    "lon": 12.4469,
+    "lat": 56.0931,
+    "shoreDir": 180
+  },
+  {
+    "name": "Lynæs",
+    "lon": 11.8626,
+    "lat": 55.9441,
+    "shoreDir": 90
+  },
+  {
+    "name": "Amager Strandpark",
+    "lon": 12.6441,
+    "lat": 55.6504,
+    "shoreDir": 270
+  },
+  {
+    "name": "Køge Sydstrand",
+    "lon": 12.1917,
+    "lat": 55.4477,
+    "shoreDir": 270
+  },
+  {
+    "name": "Dalby Huse",
+    "lon": 11.9366,
+    "lat": 55.8217,
+    "shoreDir": 270
+  },
+  {
+    "name": "Sanddopperne",
+    "lon": 11.3781,
+    "lat": 55.776,
+    "shoreDir": 270
+  },
+  {
+    "name": "Farøbroen vest",
+    "lon": 11.98,
+    "lat": 54.96,
+    "shoreDir": 270
+  },
+  {
+    "name": "Farøbroen øst",
+    "lon": 12.02,
+    "lat": 54.96,
+    "shoreDir": 90
+  },
+  {
+    "name": "Klitmøller (Cold Hawaii)",
+    "lon": 8.5219,
+    "lat": 57.0503,
+    "shoreDir": 90
+  },
+  {
+    "name": "Vorupør",
+    "lon": 8.3567,
+    "lat": 56.9636,
+    "shoreDir": 90
+  },
+  {
+    "name": "Hanstholm (Middles)",
+    "lon": 8.6,
+    "lat": 57.1167,
+    "shoreDir": 180
+  },
+  {
+    "name": "Agger Tange",
+    "lon": 8.2333,
+    "lat": 56.75,
+    "shoreDir": null
+  },
+  {
+    "name": "Vigsø",
+    "lon": 9.25,
+    "lat": 57.1667,
+    "shoreDir": 180
+  },
+  {
+    "name": "Løkken",
+    "lon": 9.7167,
+    "lat": 57.3667,
+    "shoreDir": 135
+  },
+  {
+    "name": "Hvide Sande",
+    "lon": 8.1264,
+    "lat": 55.9975,
+    "shoreDir": 90
+  },
+  {
+    "name": "Bork Havn",
+    "lon": 8.3167,
+    "lat": 55.8583,
+    "shoreDir": null
+  },
+  {
+    "name": "Søndervig",
+    "lon": 8.1167,
+    "lat": 56.0833,
+    "shoreDir": 90
+  },
+  {
+    "name": "Thyborøn",
+    "lon": 8.2167,
+    "lat": 56.7,
+    "shoreDir": 90
+  },
+  {
+    "name": "Vejers Strand",
+    "lon": 8.1333,
+    "lat": 55.6667,
+    "shoreDir": 90
+  },
+  {
+    "name": "Henne Strand",
+    "lon": 8.1,
+    "lat": 55.7833,
+    "shoreDir": 90
+  },
+  {
+    "name": "Blåvand",
+    "lon": 8.0833,
+    "lat": 55.55,
+    "shoreDir": 90
+  },
+  {
+    "name": "Sønderstrand, Rømø",
+    "lon": 8.5333,
+    "lat": 55.0833,
+    "shoreDir": 90
+  },
+  {
+    "name": "Nykøbing Mors",
+    "lon": 8.8636,
+    "lat": 56.7942,
+    "shoreDir": null
+  },
+  {
+    "name": "Glyngøre",
+    "lon": 8.8667,
+    "lat": 56.7583,
+    "shoreDir": null
+  },
+  {
+    "name": "Ejsing",
+    "lon": 8.8,
+    "lat": 56.6667,
+    "shoreDir": null
+  },
+  {
+    "name": "Saksild Strand",
+    "lon": 10.3667,
+    "lat": 55.9833,
+    "shoreDir": 270
+  },
+  {
+    "name": "Glatved Strand",
+    "lon": 10.7167,
+    "lat": 56.3667,
+    "shoreDir": 270
+  },
+  {
+    "name": "Fornæs",
+    "lon": 10.9667,
+    "lat": 56.45,
+    "shoreDir": 270
+  },
+  {
+    "name": "Husodde",
+    "lon": 10.2333,
+    "lat": 55.7167,
+    "shoreDir": null
+  },
+  {
+    "name": "Borre Knob",
+    "lon": 10.0333,
+    "lat": 55.8167,
+    "shoreDir": null
+  },
+  {
+    "name": "Skæring Strand",
+    "lon": 10.2667,
+    "lat": 56.2167,
+    "shoreDir": 270
+  },
+  {
+    "name": "Kysing Fjord",
+    "lon": 10.2333,
+    "lat": 55.95,
+    "shoreDir": null
+  },
+  {
+    "name": "Bøjden",
+    "lon": 10.1667,
+    "lat": 55.0833,
+    "shoreDir": null
+  },
+  {
+    "name": "Assens",
+    "lon": 9.8917,
+    "lat": 55.2667,
+    "shoreDir": null
+  },
+  {
+    "name": "Fænø",
+    "lon": 9.7833,
+    "lat": 55.5,
+    "shoreDir": null
+  },
+  {
+    "name": "Middelfart",
+    "lon": 9.7333,
+    "lat": 55.5083,
+    "shoreDir": null
+  },
+  {
+    "name": "Sydvestpynten, Dragør",
+    "lon": 12.6167,
+    "lat": 55.5833,
+    "shoreDir": 90
+  },
+  {
+    "name": "Cafe Sylten, Dragør",
+    "lon": 12.66,
+    "lat": 55.59,
+    "shoreDir": 270
+  },
+  {
+    "name": "Vallensbæk/Ishøj Strand",
+    "lon": 12.3667,
+    "lat": 55.6167,
+    "shoreDir": 270
+  },
+  {
+    "name": "Rørvig",
+    "lon": 11.7833,
+    "lat": 55.9667,
+    "shoreDir": 180
+  },
+  {
+    "name": "Odden Havn",
+    "lon": 11.3167,
+    "lat": 55.9667,
+    "shoreDir": 180
+  },
+  {
+    "name": "Stevns / Rødvig",
+    "lon": 12.3833,
+    "lat": 55.25,
+    "shoreDir": 270
+  },
+  {
+    "name": "Møn (Hjelm Bugt)",
+    "lon": 12.45,
+    "lat": 54.9667,
+    "shoreDir": 0
+  },
+  {
+    "name": "Dueodde, Bornholm",
+    "lon": 15.0667,
+    "lat": 54.9833,
+    "shoreDir": 0
+  },
+  {
+    "name": "Sandvig, Bornholm",
+    "lon": 14.7667,
+    "lat": 55.2833,
+    "shoreDir": 180
+  }
 ]
